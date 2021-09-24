@@ -1,0 +1,54 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{IFT2035-Ete}
+\author{jdavedarley }
+\date{May 2021}
+
+\begin{document}
+
+   Devoir realise par Joseph Dave Darley (20115816) et Aminata Diallo\\
+   
+
+   L'implémentation de \emph {psil} a largement perfectionné notre compréhension des langages de programmation fonctionnels faisant partie du style de programmation \emph {Déclaratif}. Toutefois, la réalisation de ce projet a de loin été une tâche facile. En effet, nous avons rencontré toute une panoplie de difficultés et de surprises. Ce qui nous a amené à faire certains choix éclairés et a rejeté certaines options, dans le but de parvenir à une implémentation simple et efficace.
+   
+   \vspace{.7 cm}
+   Dans les lignes subséquentes nous allons donné plus de détails au sujet de ces problèmes et la façon dont nous avons jugé nécessaire de les résoudre, lors de cette expérience qui se veut très didactique dans le cadre de ce cours de Concept des Langages de Programmation.\\
+   
+   \textbf {PROBLÈMES / SURPRISES RENCONTRÉS} / \textbf {OPTIONS REJETÉES} / \textbf {CHOIX EFFECTUÉS} \vspace{.7 cm}
+
+Nous avons tout d'abord lu de fond en comble l'énoncé car comme c'était suggéré par le prof , la compréhension de ce qui nous est demandé de faire est la partie la plus difficile du projet. Ensuite nous avons fait des recherches sur internet ainsi que les notes de cours pour comprendre la syntaxe utiliser dans l'analyseur syntaxique,lexicale mais aussi  notre 'pretty-Printer'. \vspace{.7 cm} 
+
+Nous avons premierement remarque que le prof a ete tres gentil de nous donner les fonctions "sexpOf" "lexpOf" "typeOf" et "valOf" qui permettent de transcrir comme suit un string en Sexp ; un string en Lexp ; un string en Ltype et un string en Value; Nous avons remarque que notre evaluateur du programme prend un Lexp en parametre et non un sexp et donc fallait convertir notre sexp en Lexp a l'aide de la fonction s2l. Quelques sexp ont ete fait avec facilite tandis que d'autres non . Encore ici le prof a ete gentil de nous donner la fonction sexp2list qui traduit tout sexp en un tableau de sexp . Le truc remarque avec sexp2list apres plusieurs utilisations est  que tout truc de la forme (Scons a b) sera transcrit de la forme [a,b]. j'ai rencontre pas mal  de problemes pour transformer les "call" "let" "fun" et "fetch" en Lexp . Dans le paragraphe suivant je vais exliquer les problemes rencontres et comment j'ai fait pour les resoudre. \vspace{.7 cm}
+
+Notre premiere idee pour "(call a b)" a ete de le transformer en Lcall a b mais nous avons vite remarque qu'un appel a "call" contenant plus de 2 elements ne fonctionnerait pas de cette maniere car comme dit dans l'enonce (call a b c) === (call (call a b) c)  et donc nous avons cree deux fonctions auxilliaires "aideCall et aideCall2" ; si on recoit un call avec 2 arguments aideCall retourne Lcall a b sinon ca appele la fonction aideCall2. aideCall2 recoit un tableau et un Lexp comme parametres. Le lexp est le Lcall des 2 premiers elements et le tableau contient le reste des elements c'est a dire [c,....]. aideCall2 retourne Lcall du lexp passe en parametre et de chaque element du tableau de facon recursive.  \vspace{.7 cm}
+
+La transformation d'un (fun ...) en Lexp a ete fait pareillement au (call..) sauf que nous avons inverse le tableau de sexp passe en parametre car on peut voir un "fun" peut etre comme un "call" mais de la facon suivante : (call a b c) ==> (call a (call b c)). Ici nous avons utilise "aideFun" et "aideFun2" de la meme facon que "aideCall" et "aideCall2". Le probleme qu'on a eu en inversant le tableau c que [x1,x2,..,xn,e] deviendrait [e,xn,...,x2,x1] et comme notre Lfun le plus imbrique doit etre Lfun xn e et non Lfun e xn , nous avons aussi interchange le x et y en considerant notre tableau comme (x:y:ys). \vspace{.7 cm}
+
+Notre plus grande difficulte a ete la transformation d'un (let d1 e) en Lexp , comme vu dans l'enonce d1 peut prendre 3 formes : (x e); (x t e) et (x (x1 t1) ... (xn tn) t e); nous avons utilise deux fonctions auxilliaire "aideLet" et "aideeLet" ; Les 2 premiers cas de d1 ont ete assez direct mais nous avons passe pas mal de temps sur le dernier cas, car il fallait faire du parsing ce qui nous a pris pas mal de temps. La reflexion sur comment recupere le type de la fonction et les arguments de la fonctions a ete la partie la plus dur. Apres de longues journees de reflexion nous sommes arrives a cette solution: 
+Nous savons que la transformation d'une telle expression:(x (x1 t1) ... (xn tn) t e) via la fonction sexp2list donne [x,(x1 t1),..,(xn tn), t,e] et donc pour recuperer les types de la fonction, nous avons cree une fonction (aide5Let) a laquelle on passe ce tableau . aide5Let parcours le tableau en faisant: si un element du tableau est de la forme : (scons a b) c'est a dire (x1 t1) on prend le t1 , on le transforme en [String] et a l'aide de la fonction aidelet4 on ajoute [" -> ] a ce tableau de string. On fait ca recursivement pour pair (x1 t1) jusqu'a t . A la fin de l'appel de aide5let on aura comme tableau ["t1"," -> ",....," -> ","tn"], apres il suffisait d'ajouter les parentheses ouvrantes et fermantes , puis de faire appel a la fonction predefinie de haskell "concat" pour transformer notre tableau de string en string et apres il suffisait d'appleler la fonction sexpOf sur notre nouveau String pour avoir une representation du type en Sexp.
+
+Une logique similaire a ete utilise pour recuperer les arguments de la fonction. Et donc a la fin nous avons eu une expression du type (x t e) ce qui equivaut a la deuxieme forme de let ce qui etait un sucre syntaxique pour (x (hastype e t)).
+
+La representation du (if ..) ; (tuple ..) et (fetch ..) ont ete assez direct.
+\vspace{.7 cm}
+
+Maintenant parlons de la transformation d'un Sexp en Ltype (s2t) : J'ai trouve la transformation d'un Sexp en Ltype assez direct. Cette fonction a ete faite sans difficulte. L'idee a ete si mon Sexp n'est pas un (ssym Int) ou (Ssym Bool) alors forcement c'est un (Scons a b) qui contient (Tuple a ... b) ou (t .... t -> t). L'idee realisee pour pour la transformation d'un tuple en son type est : on utilise encore sexp2list qui va construire un tableau avec [Ssym "tuple", elem1, ....,elemn] et la il suffisait de chercher le type de chaque element de elem1 a elemn. Si l'element a l'indice 0 du tableau retourne par sexp2list n'est pas (Ssym "Tuple") alors on sait qu'on a affaire a une fonction . Vu que on sait que d'apres l'enonce (t1 .... tn -> t) equivaut a (t1 -> ... (tn -> t)) et que le tableau retourne de sexp2list est de la forme [t1,....,tn,->,t]; la fonction aideTypeFun permet de parcourir ce tableau en retournant Larw (type x) (appel de aideTypeFun sur le reste du tableau) ; si le x est egal a ssym "->" on saute ce x en appelant aideTypeFun sur le reste tu tableau (xs) \vspace{.7 cm}
+
+
+\textbf {Réalisation de la fonction d'évaluation principale (eval)} \vspace{.7 cm}
+
+Comprendre le type de la fonction eval a ete une des taches les plus demandant car a premiere vu le type de sorti de cette fonction est ([Value] -> Value). La confusion venait du fait que ca disait qu'on passait "une liste de valeurs venv" , a premiere vu on voyait pas d'ou sortait cette liste de valeurs . Apres plusieurs lectures on a remarque la facon dont eval appel eval2  on s'est souvenu que  a -> (b -> c)  === a -> b -> c . Lorsqu'on s'est souvenu de ce petit fait faire la fonction eval n'a pas ete d'une trop grande difficulte. On a utilise 4 fonctions auxilliaires  "aideLtup", "aideLfetch", "aideLetVar" et "aideLetValue". Ces 4 fonctions ont facilite respectivement l'evaluation de (Ltup ..) ,(Lfetch ..) et (Llet....) . L'evaluation de (Lif ..), (Ltuple ...), (Lcall ...) et (Lfun ..) ont ete assez direct , mais par contre l'evalution du (Llet ...) m'a pris un temps monstrueux et au moment d'ecrire ce rapport je suis pas sur de saisir tout a fait son evaluation . L'idee que j'avais au debut pour l'evaluation du "Llet tab exp" est que lorsque je parcours le tableau [(x,y):ys] je met x dans env et je mets l'evalutaion de y dans venv et ensuite j'evalue exp avec le nouveau env et le nouveau venv. Cette methode fonctionne tres bien pour l'evaluation de la majorite des (let ....) mais par contre arrive au cas ou le y fait reference a une variable du ys (comme c'est le cas du dernier exemple du fichier psil) la etant donne que la variable auquel fait reference y n'est pas encore dans env cela me sortait une erreur "variable inconnu ..." . Apres plusieurs jours de reflexions la dessus et grace aux differentes reponses des tpeistes je suis arrive a une conclusion et c'est de cette facon que je l'ai implemente dans la version final. Mon implementation est la suivante: tout d'abord je parcours mon Tableau [(x,y):ys] de facons recursif et j'ajoute tout les variables (c-a-d x) dans mon env ; ensuite je parcours mon [(x,y):ys] de facon recursif mais cette fois j'evalue les y et je rajoute ces evaluations dans venv. Alors j'evalue mon "exp" avec mes variables mises a jour et mes valeurs mises a jour.  
+J'ai gere d'apres moi les 2 cas possible dans le (Lfetch a tab c); 1- Comme c'est indique dans l'enonce on a (fetch e1 (x1 ... xn) e2), les cas possibles d'apres moi sont si on a (x1 ... xn) alors e1 sera un (tuple .....) mais par contre si on a un seul (x1) , e1 peut etre n'importe quel type d'expression. La fonction "aideLfetch" permet de gerer le 1er cas.
+
+En conclusion , je peux dire eval a ete une fonction tres demandant a faire.\vspace{.7 cm}
+
+\textbf {Réalisation des fonctions "infer" et "check"} \vspace{.7 cm}
+
+La fonction Infer n'a pas presente trop grande difficulte vu qu'il fallait suivre les regles de typage de l'enonce. Au debut j'avais une mauvaise comprehension de "infer tenv (Ltup ..)". J'avais seulement retourne le type du premier element du tuple, a la lumiere des reponses des tpeistes j'ai modifie mon implementation en utilisant une fonction auxilliaire "aideInferTuple" qui retourne un tableau contenant le type de chaque element de mon tuple.  
+De meme avec la fonction check, le plus difficile etait de comprendre les regles de typages de la figure 2 de l'enonce , une fois compris cela a ete fait avec facilite.\vspace{.7 cm}
+
+
+En conclusion , on peut dire que lors de la première lecture du code et de l'énoncé , ce devoir nous paraissait comme un obstacle totalement infranchissable. Mais au fur et a mesure, nous avons vu le vrai objectif de ce devoir qui était d'augmenter notre connaissance d'Haskell . On peut donc dire que  l'objectif a été atteint suite à des millions d'erreurs effectuées.
+
+\end{document}
